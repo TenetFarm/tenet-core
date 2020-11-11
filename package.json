@@ -1,0 +1,15 @@
+{
+  "name": "tenet",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "bip39": "^3.0.2",
+    "ethereumjs-util": "^7.0.5",
+    "ethereumjs-wallet": "^1.0.0",
+    "python": "0.0.4",
+    "truffle": "^5.1.41",
+    "truffle-flattener": "^1.4.4",
+    "truffle-hdwallet-provider": "^1.0.17"
+  }
+}
