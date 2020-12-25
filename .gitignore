@@ -2,4 +2,4 @@
 /build/
 /migrations_bsc/
 /migrations_eth/
-truffle-config.js
+/truffle-config.js
