@@ -1,9 +1,7 @@
 const TenetMine = artifacts.require('TenetMine');
 
 contract('TenetMine', () => {
-
     beforeEach(async () => {
-        // _startBlock _tenPerBlock _bonusEndBlock _bonus_multiplier _subBlockNumerPeriod _subSharePerBlock
         this.mine = await TenetMine.new('100', '100', '100', '10', '100', [100,90,80,70,60,50,40,30,20,10,0]);
         console.log('address: ' + this.mine.address);
     });
@@ -106,7 +104,6 @@ contract('TenetMine', () => {
         console.log('reward1: ' + reward.toString(10));
         assert.equal((await this.mine.calcMineTenReward('200', '600')).valueOf(), '34000');
 
-
         // 9000 + 8000 + 7000
         reward = (await this.mine.calcMineTenReward('300', '600')).valueOf();
         console.log('reward2: ' + reward.toString(10));
@@ -141,39 +138,6 @@ contract('TenetMine', () => {
 
 
     });
-
-    // it('calc mine ten reward ', async () => {
-    //     end_block = (await this.mine.endBlock()).valueOf();
-    //     console.log('end_block: ' + end_block.toString(10));
-    //     console.log('block number: ' + (await web3.eth.getBlockNumber()).valueOf());
-        
-    //     reward = (await this.mine.calcMineTenReward('950', '1150')).valueOf();
-    //     console.log('reward: ' + reward.toString(10));
-    //     // endBlock = 1100, 50 * 20 + 100 * 10 = 2000
-    //     assert.equal((await this.mine.calcMineTenReward('950', '1150')).valueOf(), '2000');
-    // });
-
-    // it('calc mine ten reward ', async () => {
-    //     end_block = (await this.mine.endBlock()).valueOf();
-    //     console.log('end_block: ' + end_block.toString(10));
-    //     console.log('block number: ' + (await web3.eth.getBlockNumber()).valueOf());
-        
-    //     reward = (await this.mine.calcMineTenReward('1050', '1150')).valueOf();
-    //     console.log('reward: ' + reward.toString(10));
-    //     // endBlock = 1100, 50 * 10 = 500
-    //     assert.equal((await this.mine.calcMineTenReward('1050', '1150')).valueOf(), '500');
-    // });
-
-    // it('calc mine ten reward ', async () => {
-    //     end_block = (await this.mine.endBlock()).valueOf();
-    //     console.log('end_block: ' + end_block.toString(10));
-    //     console.log('block number: ' + (await web3.eth.getBlockNumber()).valueOf());
-        
-    //     reward = (await this.mine.calcMineTenReward('1100', '1200')).valueOf();
-    //     console.log('reward: ' + reward.toString(10));
-    //     // endBlock = 1100, 100 * 0 = 0
-    //     assert.equal((await this.mine.calcMineTenReward('1100', '1200')).valueOf(), '0');
-    // });
     
 
 });

@@ -42,14 +42,10 @@ contract('TenetProxy', ([projecter1,lpTokenUser1]) => {
         await this.lpdrep.transfer(lpTokenUser1, '1000');
         await this.lpdrep.approve(this.tenet.address, '100', { from: lpTokenUser1 });
 
-        // getTenUserPool = (await this.tenetProxy.getTenUserPool());
-        // console.log('getTenUserPool: ' + getTenUserPool[0]);
-
         await this.lpten.approve(this.tenet.address, '100', { from: projecter1 });     
         await this.drep.approve(this.tenet.address, '600', { from: projecter1 });
 
         await this.tenet.add(this.lpdrep.address, this.drep.address, '600', '0', '100', '5', '20', '2', '100', {from: projecter1});
-
 
         await this.tenet.depositLPToken('0', '100', { from: lpTokenUser1 });
 
