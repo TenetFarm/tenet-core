@@ -76,6 +76,7 @@ contract Tenet is Ownable {
     TenPoolInfo public tenUserPool;
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     mapping (address => UserInfo) public userInfoUserPool;
+    mapping (address => bool) public tenMintRightAddr;
 
     event AddPool(address indexed user, uint256 indexed pid, uint256 tokenAmount,uint256 lpTenAmount);
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount,uint256 penddingToken,uint256 penddingTen,uint256 freezeTen,uint256 freezeBlocks);
@@ -117,10 +118,20 @@ contract Tenet is Ownable {
         bonusAllocPointBlock = _bonusAllocPointBlock;
         minProjectUserCount = _minProjectUserCount;
     }
-
+    modifier onlyMinter() {
+        require(tenMintRightAddr[msg.sender] == true, "onlyMinter: caller is no right to mint");
+        _;
+    }
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
+    function set_tenMintRightAddr(address _addr,bool isHaveRight) public onlyOwner {
+        tenMintRightAddr[_addr] = isHaveRight;
+    }
+    function tenMint(address _toAddr,uint256 _amount) public onlyMinter {
+        ten.mint(_toAddr,_amount);
+        devaddrAmount = devaddrAmount.add(_amount.div(10));
+    }    
     function set_tenetToken(TenetToken _ten) public onlyOwner {
         ten = _ten;
     }
