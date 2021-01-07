@@ -5,7 +5,7 @@ pragma solidity 0.6.12;
 
 import "./openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "./openzeppelin/contracts/utils/EnumerableSet.sol";
+//import "./openzeppelin/contracts/utils/EnumerableSet.sol";
 import "./openzeppelin/contracts/math/SafeMath.sol";
 import "./openzeppelin/contracts/access/Ownable.sol";
 import "./TenetToken.sol";
@@ -67,8 +67,8 @@ contract Tenet is Ownable {
     uint256 public bonusAllocPointBlock;
     uint256 public minProjectUserCount;
 
-    uint256 public updateBlock;
-    uint256 public constant MINLPTOKEN_AMOUNT = 10000000000;
+    uint256 public emergencyWithdraw;
+    uint256 public constant MINLPTOKEN_AMOUNT = 10;
     uint256 public constant PERSHARERATE = 1000000000000;
     PoolInfo[] public poolInfo;
     PoolSettingInfo[] public poolSettingInfo;
@@ -77,6 +77,9 @@ contract Tenet is Ownable {
     mapping (uint256 => mapping (address => UserInfo)) public userInfo;
     mapping (address => UserInfo) public userInfoUserPool;
     mapping (address => bool) public tenMintRightAddr;
+
+    address public bonusAddr;
+    uint256 public bonusPoolFeeRate;
 
     event AddPool(address indexed user, uint256 indexed pid, uint256 tokenAmount,uint256 lpTenAmount);
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount,uint256 penddingToken,uint256 penddingTen,uint256 freezeTen,uint256 freezeBlocks);
@@ -108,65 +111,87 @@ contract Tenet is Ownable {
         lpTokenTen = _lpTen;
         tenProjectPool.allocPoint = _allocPointProject;
         tenUserPool.allocPoint = _allocPointUser;
-        totalAllocPoint = _allocPointProject + _allocPointUser;
+        totalAllocPoint = _allocPointProject.add(_allocPointUser);
         devaddrAmount = 0;
         devWithdrawStartBlock = _devWithdrawStartBlock;
         addpoolfee = 0;
-        updateBlock = 0;
+        emergencyWithdraw = 0;
         modifyAllocPointPeriod = _modifyAllocPointPeriod;
         lastModifyAllocPointBlock = tenMineCalc.startBlock();
         bonusAllocPointBlock = _bonusAllocPointBlock;
         minProjectUserCount = _minProjectUserCount;
+        bonusAddr = msg.sender;
+        bonusPoolFeeRate = 0;
     }
     modifier onlyMinter() {
         require(tenMintRightAddr[msg.sender] == true, "onlyMinter: caller is no right to mint");
         _;
     }
+    modifier onlyNotEmergencyWithdraw() {
+        require(emergencyWithdraw == 0, "onlyNotEmergencyWithdraw: emergencyWithdraw now");
+        _;
+    }    
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
+    }
+    function set_basicInfo(TenetToken _ten,IERC20 _lpTokenTen,TenetMine _tenMineCalc,uint256 _devWithdrawStartBlock,uint256 _bonusAllocPointBlock,uint256 _minProjectUserCount) public onlyOwner {
+        ten = _ten;
+        lpTokenTen = _lpTokenTen;
+        tenMineCalc = _tenMineCalc;
+        devWithdrawStartBlock = _devWithdrawStartBlock;
+        bonusAllocPointBlock = _bonusAllocPointBlock;
+        minProjectUserCount = _minProjectUserCount;
+    }
+    function set_bonusInfo(address _bonusAddr,uint256 _addpoolfee,uint256 _bonusPoolFeeRate) public onlyOwner {
+        bonusAddr = _bonusAddr;
+        addpoolfee = _addpoolfee;
+        bonusPoolFeeRate = _bonusPoolFeeRate;
     }
     function set_tenMintRightAddr(address _addr,bool isHaveRight) public onlyOwner {
         tenMintRightAddr[_addr] = isHaveRight;
     }
     function tenMint(address _toAddr,uint256 _amount) public onlyMinter {
-        ten.mint(_toAddr,_amount);
-        devaddrAmount = devaddrAmount.add(_amount.div(10));
+        if(_amount > 0){
+            ten.mint(_toAddr,_amount);
+            devaddrAmount = devaddrAmount.add(_amount.div(10));
+        }
     }    
-    function set_tenetToken(TenetToken _ten) public onlyOwner {
+ /*   function set_tenetToken(TenetToken _ten) public onlyOwner {
         ten = _ten;
-    }
+    }*/
     function set_tenNewOwner(address _tenNewOwner) public onlyOwner {
         ten.transferOwnership(_tenNewOwner);
     }    
-    function set_tenetLPToken(IERC20 _lpTokenTen) public onlyOwner {
+/*    function set_tenetLPToken(IERC20 _lpTokenTen) public onlyOwner {
         lpTokenTen = _lpTokenTen;
     }
     function set_tenetMine(TenetMine _tenMineCalc) public onlyOwner {
         tenMineCalc = _tenMineCalc;
+    }*/
+    function set_emergencyWithdraw(uint256 _emergencyWithdraw) public onlyOwner {
+        emergencyWithdraw = _emergencyWithdraw;
     }
-    function set_updateContract(uint256 _updateBlock) public onlyOwner {
-        updateBlock = _updateBlock;
-    }
-    function set_addPoolFee(uint256 _addpoolfee) public onlyOwner {
+/*    function set_addPoolFee(uint256 _addpoolfee) public onlyOwner {
         addpoolfee = _addpoolfee;
     }
     function set_devWithdrawStartBlock(uint256 _devWithdrawStartBlock) public onlyOwner {
         devWithdrawStartBlock = _devWithdrawStartBlock;
-    }   
+    }   */
     function set_allocPoint(uint256 _allocPointProject,uint256 _allocPointUser,uint256 _modifyAllocPointPeriod) public onlyOwner {
         _minePoolTen(tenProjectPool);
         _minePoolTen(tenUserPool);
         tenProjectPool.allocPoint = _allocPointProject;
         tenUserPool.allocPoint = _allocPointUser;
         modifyAllocPointPeriod = _modifyAllocPointPeriod;
-        totalAllocPoint = _allocPointProject + _allocPointUser;        
+        totalAllocPoint = _allocPointProject.add(_allocPointUser);
+        require(totalAllocPoint > 0, "set_allocPoint: Alloc Point invalid");
     }
-    function set_bonusAllocPointBlock(uint256 _bonusAllocPointBlock) public onlyOwner {
+/*    function set_bonusAllocPointBlock(uint256 _bonusAllocPointBlock) public onlyOwner {
         bonusAllocPointBlock = _bonusAllocPointBlock;
     }  
     function set_minProjectUserCount(uint256 _minProjectUserCount) public onlyOwner {
         minProjectUserCount = _minProjectUserCount;
-    } 
+    } */
     function add(address _lpToken,
             address _tokenAddr,
             uint256 _tokenAmount,
@@ -175,20 +200,25 @@ contract Tenet is Ownable {
             uint256 _tokenPerBlock,
             uint256 _tokenBonusEndBlockOffset,
             uint256 _tokenBonusMultipler,
-            uint256 _lpTenAmount) public {
+            uint256 _lpTenAmount) public onlyNotEmergencyWithdraw {
         if(_startBlock == 0){
             _startBlock = block.number;
         }
         require(block.number <= _startBlock, "add: startBlock invalid");
         require(_endBlockOffset >= _tokenBonusEndBlockOffset, "add: bonusEndBlockOffset invalid");
-        require(tenMineCalc.getMultiplier(_startBlock,_startBlock + _endBlockOffset,_startBlock + _endBlockOffset,_startBlock + _tokenBonusEndBlockOffset,_tokenBonusMultipler).mul(_tokenPerBlock) <= _tokenAmount, "add: token amount invalid");
-        if(updateBlock > 0){
-            require(block.number <= updateBlock, "add: updateBlock invalid");
-        }
-        IERC20(_tokenAddr).transferFrom(msg.sender,address(this), _tokenAmount);
+        require(tenMineCalc.getMultiplier(_startBlock,_startBlock.add(_endBlockOffset),_startBlock.add(_endBlockOffset),_startBlock.add(_tokenBonusEndBlockOffset),_tokenBonusMultipler).mul(_tokenPerBlock) <= _tokenAmount, "add: token amount invalid");
+        require(_tokenAmount > 0, "add: tokenAmount invalid");
+        IERC20(_tokenAddr).safeTransferFrom(msg.sender,address(this), _tokenAmount);
         if(addpoolfee > 0){
-            ten.transferFrom(msg.sender,address(this), addpoolfee);
-            ten.burn(address(this),addpoolfee);
+            IERC20(address(ten)).safeTransferFrom(msg.sender,address(this), addpoolfee);
+            if(bonusPoolFeeRate > 0){
+                IERC20(address(ten)).safeTransfer(bonusAddr, addpoolfee.mul(bonusPoolFeeRate).div(10000));
+                if(bonusPoolFeeRate < 10000){
+                    ten.burn(address(this),addpoolfee.sub(addpoolfee.mul(bonusPoolFeeRate).div(10000)));
+                }
+            }else{
+                ten.burn(address(this),addpoolfee);
+            }
         }
         uint256 pid = poolInfo.length;
         poolSettingInfo.push(PoolSettingInfo({
@@ -197,9 +227,9 @@ contract Tenet is Ownable {
                 projectAddr: msg.sender,
                 tokenAmount:_tokenAmount,
                 startBlock: _startBlock,
-                endBlock: _startBlock + _endBlockOffset,
+                endBlock: _startBlock.add(_endBlockOffset),
                 tokenPerBlock: _tokenPerBlock,
-                tokenBonusEndBlock: _startBlock + _tokenBonusEndBlockOffset,
+                tokenBonusEndBlock: _startBlock.add(_tokenBonusEndBlockOffset),
                 tokenBonusMultipler: _tokenBonusMultipler
             }));
         poolInfo.push(PoolInfo({
@@ -212,7 +242,7 @@ contract Tenet is Ownable {
             rewardTenDebt: 0,
             mineTokenAmount: 0
         }));
-        if(_lpTenAmount>MINLPTOKEN_AMOUNT){
+        if(_lpTenAmount>=MINLPTOKEN_AMOUNT){
             depositTenByProject(pid,_lpTenAmount);
         }
         emit AddPool(msg.sender, pid, _tokenAmount,_lpTenAmount);
@@ -220,12 +250,13 @@ contract Tenet is Ownable {
     function updateAllocPoint() public {
         if(lastModifyAllocPointBlock.add(modifyAllocPointPeriod) <= block.number){
             uint256 totalLPTokenAmount = tenProjectPool.lpTokenTotalAmount.mul(bonusAllocPointBlock.add(1e4)).div(1e4).add(tenUserPool.lpTokenTotalAmount);
-            if(totalLPTokenAmount > MINLPTOKEN_AMOUNT)
+            if(totalLPTokenAmount > 0)
             {
                 tenProjectPool.allocPoint = tenProjectPool.allocPoint.add(tenProjectPool.lpTokenTotalAmount.mul(1e4).mul(bonusAllocPointBlock.add(1e4)).div(1e4).div(totalLPTokenAmount)).div(2);
                 tenUserPool.allocPoint = tenUserPool.allocPoint.add(tenUserPool.lpTokenTotalAmount.mul(1e4).div(totalLPTokenAmount)).div(2);
-                totalAllocPoint = tenProjectPool.allocPoint + tenUserPool.allocPoint;
+                totalAllocPoint = tenProjectPool.allocPoint.add(tenUserPool.allocPoint);
                 lastModifyAllocPointBlock = block.number;
+                require(totalAllocPoint > 0, "updateAllocPoint: Alloc Point invalid");
             }
         }     
     }
@@ -234,26 +265,26 @@ contract Tenet is Ownable {
         if (block.number <= tenPool.lastRewardBlock) {
             return;
         }
-        if (tenPool.lpTokenTotalAmount <= MINLPTOKEN_AMOUNT) {
+        if (tenPool.lpTokenTotalAmount < MINLPTOKEN_AMOUNT) {
             tenPool.lastRewardBlock = block.number;
             return;
         }
-        if(updateBlock > 0){
-            if(block.number >= updateBlock){
-                tenPool.lastRewardBlock = block.number;
-                return;                
-            }
+        if(emergencyWithdraw > 0){
+            tenPool.lastRewardBlock = block.number;
+            return;                
         }
         uint256 tenReward = tenMineCalc.calcMineTenReward(tenPool.lastRewardBlock, block.number);
-        tenReward = tenReward.mul(tenPool.allocPoint).div(totalAllocPoint);
-        devaddrAmount = devaddrAmount.add(tenReward.div(10));
-        ten.mint(address(this), tenReward);
-        tenPool.accTenPerShare = tenPool.accTenPerShare.add(tenReward.mul(PERSHARERATE).div(tenPool.lpTokenTotalAmount));
+        if(tenReward > 0){
+            tenReward = tenReward.mul(tenPool.allocPoint).div(totalAllocPoint);
+            devaddrAmount = devaddrAmount.add(tenReward.div(10));
+            ten.mint(address(this), tenReward);
+            tenPool.accTenPerShare = tenPool.accTenPerShare.add(tenReward.mul(PERSHARERATE).div(tenPool.lpTokenTotalAmount));
+        }
         tenPool.lastRewardBlock = block.number;
         updateAllocPoint();
     }
     function _withdrawProjectTenPool(PoolInfo storage pool) internal returns (uint256 pending){
-        if (pool.amount > MINLPTOKEN_AMOUNT) {
+        if (pool.amount >= MINLPTOKEN_AMOUNT) {
             pending = pool.amount.mul(tenProjectPool.accTenPerShare).div(PERSHARERATE).sub(pool.rewardTenDebt);
             if(pending > 0){
                 if(pool.userCount == 0){
@@ -263,7 +294,9 @@ contract Tenet is Ownable {
                 else{
                     if(pool.userCount<minProjectUserCount){
                         uint256 newPending = pending.mul(bonusAllocPointBlock.mul(pool.userCount).div(minProjectUserCount).add(1e4)).div(bonusAllocPointBlock.add(1e4));
-                        ten.burn(address(this),pending.sub(newPending));
+                        if(pending.sub(newPending) > 0){
+                            ten.burn(address(this),pending.sub(newPending));
+                        }
                         pending = newPending;
                     }                    
                     pool.accTenPerShare = pool.accTenPerShare.add(pending.mul(PERSHARERATE).div(pool.lpTokenTotalAmount));
@@ -278,15 +311,13 @@ contract Tenet is Ownable {
             pool.amount = pool.amount.add(_amount);
         }else if(amountType == 2){
             pool.amount = pool.amount.sub(_amount);
-            if(pool.amount <= MINLPTOKEN_AMOUNT){
-                pool.amount = 0;
-            }
             lpTokenTen.safeTransfer(address(msg.sender), _amount);
             tenProjectPool.lpTokenTotalAmount = tenProjectPool.lpTokenTotalAmount.sub(_amount);
         }
         pool.rewardTenDebt = pool.amount.mul(tenProjectPool.accTenPerShare).div(PERSHARERATE);
     }
-    function depositTenByProject(uint256 _pid,uint256 _amount) public {
+    function depositTenByProject(uint256 _pid,uint256 _amount) public onlyNotEmergencyWithdraw {
+        require(_amount > 0, "depositTenByProject: lpamount not good");
         PoolInfo storage pool = poolInfo[_pid];
         PoolSettingInfo storage poolSetting = poolSettingInfo[_pid];
         require(poolSetting.projectAddr == msg.sender, "depositTenByProject: not good");
@@ -301,9 +332,19 @@ contract Tenet is Ownable {
         PoolSettingInfo storage poolSetting = poolSettingInfo[_pid];
         require(poolSetting.projectAddr == msg.sender, "withdrawTenByProject: not good");
         require(pool.amount >= _amount, "withdrawTenByProject: not good");
-        _minePoolTen(tenProjectPool);
-        _withdrawProjectTenPool(pool);
-        _updateProjectTenPoolAmount(pool,_amount,2);
+        if(emergencyWithdraw == 0){
+            _minePoolTen(tenProjectPool);
+            _withdrawProjectTenPool(pool);
+        }else{
+            if(pool.lastRewardBlock < poolSetting.endBlock){
+                if(poolSetting.tokenAmount.sub(pool.mineTokenAmount) > 0){
+                    IERC20(poolSetting.tokenAddr).safeTransfer(poolSetting.projectAddr,poolSetting.tokenAmount.sub(pool.mineTokenAmount));
+                }
+            }
+        }
+        if(_amount > 0){
+            _updateProjectTenPoolAmount(pool,_amount,2);
+        }
         emit WithdrawLPTen(msg.sender, 1, _amount,0,0,0);
     }
 
@@ -311,10 +352,7 @@ contract Tenet is Ownable {
         if(_amountType == 1){
             user.amount = user.amount.add(_amount);
         }else if(_amountType == 2){
-            user.amount = user.amount.sub(_amount);
-            if(user.amount<=MINLPTOKEN_AMOUNT){
-                user.amount = 0;
-            }          
+            user.amount = user.amount.sub(_amount);      
         }
         user.rewardTenDebt = user.amount.mul(accTenPerShare).div(PERSHARERATE);
         user.lastBlockNumber = block.number;
@@ -323,7 +361,18 @@ contract Tenet is Ownable {
     }
     function _calcFreezeTen(UserInfo storage user,uint256 accTenPerShare) internal view returns (uint256 pendingTen,uint256 freezeBlocks,uint256 freezeTen){
         pendingTen = user.amount.mul(accTenPerShare).div(PERSHARERATE).sub(user.rewardTenDebt);
-        uint256 blockNow = block.number.sub(user.lastBlockNumber);
+        uint256 blockNow = 0;
+        if(pendingTen>0){
+            if(user.lastBlockNumber<tenMineCalc.startBlock()){
+                blockNow = block.number.sub(tenMineCalc.startBlock());
+            }else{
+                blockNow = block.number.sub(user.lastBlockNumber);
+            }
+        }else{
+            if(user.freezeTen > 0){
+                blockNow = block.number.sub(user.lastBlockNumber);
+            }
+        }
         uint256 periodBlockNumer = tenMineCalc.subBlockNumerPeriod();
         freezeBlocks = blockNow.add(user.freezeBlocks);
         if(freezeBlocks <= periodBlockNumer){
@@ -345,7 +394,8 @@ contract Tenet is Ownable {
         (pendingTen,freezeBlocks,freezeTen) = _calcFreezeTen(user,tenUserPool.accTenPerShare);
         safeTenTransfer(userAddr, pendingTen);
     }   
-    function depositTenByUser(uint256 _amount) public {
+    function depositTenByUser(uint256 _amount) public onlyNotEmergencyWithdraw {
+        require(_amount > 0, "depositTenByUser: lpamount not good");
         UserInfo storage user = userInfoUserPool[msg.sender];
         _minePoolTen(tenUserPool);
         (uint256 pending,uint256 freezeBlocks,uint256 freezeTen) = _withdrawUserTenPool(msg.sender,user);
@@ -356,24 +406,30 @@ contract Tenet is Ownable {
     }
 
     function withdrawTenByUser(uint256 _amount) public {
+        require(_amount > 0, "withdrawTenByUser: lpamount not good");
         UserInfo storage user = userInfoUserPool[msg.sender];
         require(user.amount >= _amount, "withdrawTenByUser: not good");
-        _minePoolTen(tenUserPool);
-        (uint256 pending,uint256 freezeBlocks,uint256 freezeTen) = _withdrawUserTenPool(msg.sender,user);
-        _updatePoolUserInfo(tenUserPool.accTenPerShare,user,freezeBlocks,freezeTen,_amount,2);
+        if(emergencyWithdraw == 0){
+            _minePoolTen(tenUserPool);
+            (uint256 pending,uint256 freezeBlocks,uint256 freezeTen) = _withdrawUserTenPool(msg.sender,user);
+            _updatePoolUserInfo(tenUserPool.accTenPerShare,user,freezeBlocks,freezeTen,_amount,2);
+            emit WithdrawLPTen(msg.sender, 2, _amount,pending,freezeTen,freezeBlocks);
+        }else{
+            _updatePoolUserInfo(tenUserPool.accTenPerShare,user,user.freezeBlocks,user.freezeTen,_amount,2);
+            emit WithdrawLPTen(msg.sender, 2, _amount,0,user.freezeTen,user.freezeBlocks);
+        }
         tenUserPool.lpTokenTotalAmount = tenUserPool.lpTokenTotalAmount.sub(_amount);          
         lpTokenTen.safeTransfer(address(msg.sender), _amount);
-        emit WithdrawLPTen(msg.sender, 2, _amount,pending,freezeTen,freezeBlocks);
     }
-
-    function mineLPTen() public {
+    function mineLPTen() public onlyNotEmergencyWithdraw {
         _minePoolTen(tenUserPool);
         UserInfo storage user = userInfoUserPool[msg.sender];
         (uint256 pending,uint256 freezeBlocks,uint256 freezeTen) = _withdrawUserTenPool(msg.sender,user);
         _updatePoolUserInfo(tenUserPool.accTenPerShare,user,freezeBlocks,freezeTen,0,0);
         emit MineLPTen(msg.sender,pending,freezeTen,freezeBlocks);
     }
-    function depositTenByUserFrom(address _from,uint256 _amount) public {
+    function depositTenByUserFrom(address _from,uint256 _amount) public onlyNotEmergencyWithdraw {
+        require(_amount > 0, "depositTenByUserFrom: lpamount not good");
         UserInfo storage user = userInfoUserPool[_from];
         _minePoolTen(tenUserPool);
         (uint256 pending,uint256 freezeBlocks,uint256 freezeTen) = _withdrawUserTenPool(_from,user);
@@ -386,7 +442,7 @@ contract Tenet is Ownable {
         if (block.number <= pool.lastRewardBlock) {
             return;
         }
-        if (pool.lpTokenTotalAmount > MINLPTOKEN_AMOUNT) {
+        if (pool.lpTokenTotalAmount >= MINLPTOKEN_AMOUNT) {
             uint256 multiplier = tenMineCalc.getMultiplier(pool.lastRewardBlock, block.number,poolSetting.endBlock,poolSetting.tokenBonusEndBlock,poolSetting.tokenBonusMultipler);
             if(multiplier > 0){
                 uint256 tokenReward = multiplier.mul(poolSetting.tokenPerBlock);
@@ -396,8 +452,8 @@ contract Tenet is Ownable {
         }
         if(pool.lastRewardBlock < poolSetting.endBlock){
             if(block.number >= poolSetting.endBlock){
-                if(poolSetting.tokenAmount.sub(pool.mineTokenAmount) > MINLPTOKEN_AMOUNT){
-                    IERC20(poolSetting.tokenAddr).transfer(poolSetting.projectAddr,poolSetting.tokenAmount.sub(pool.mineTokenAmount));
+                if(poolSetting.tokenAmount.sub(pool.mineTokenAmount) > 0){
+                    IERC20(poolSetting.tokenAddr).safeTransfer(poolSetting.projectAddr,poolSetting.tokenAmount.sub(pool.mineTokenAmount));
                 }
             }
         }
@@ -408,9 +464,11 @@ contract Tenet is Ownable {
     }
     function _withdrawTokenPool(address userAddr,PoolInfo storage pool,UserInfo storage user,PoolSettingInfo storage poolSetting) 
             internal returns (uint256 pendingToken,uint256 pendingTen,uint256 freezeBlocks,uint256 freezeTen){
-        if (user.amount > MINLPTOKEN_AMOUNT) {
+        if (user.amount >= MINLPTOKEN_AMOUNT) {
             pendingToken = user.amount.mul(pool.accTokenPerShare).div(PERSHARERATE).sub(user.rewardTokenDebt);
-            IERC20(poolSetting.tokenAddr).transfer(userAddr, pendingToken);
+            if(pendingToken > 0){
+                IERC20(poolSetting.tokenAddr).safeTransfer(userAddr, pendingToken);
+            }
             (pendingTen,freezeBlocks,freezeTen) = _calcFreezeTen(user,pool.accTenPerShare);
             safeTenTransfer(userAddr, pendingTen);
         }
@@ -420,13 +478,14 @@ contract Tenet is Ownable {
         _updatePoolUserInfo(accTenPerShare,user,_freezeBlocks,_freezeTen,_amount,_amountType);
         user.rewardTokenDebt = user.amount.mul(accTokenPerShare).div(PERSHARERATE);
     }
-    function depositLPToken(uint256 _pid, uint256 _amount) public {
+    function depositLPToken(uint256 _pid, uint256 _amount) public onlyNotEmergencyWithdraw {
+        require(_amount > 0, "depositLPToken: lpamount not good");
         PoolInfo storage pool = poolInfo[_pid];
         PoolSettingInfo storage poolSetting = poolSettingInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         _minePoolToken(pool,poolSetting);
         (uint256 pendingToken,uint256 pendingTen,uint256 freezeBlocks,uint256 freezeTen) = _withdrawTokenPool(msg.sender,pool,user,poolSetting);
-        if (user.amount <= MINLPTOKEN_AMOUNT) {
+        if (user.amount < MINLPTOKEN_AMOUNT) {
             pool.userCount = pool.userCount.add(1);
         }
         IERC20(poolSetting.lpToken).safeTransferFrom(address(msg.sender), address(this), _amount);
@@ -436,22 +495,28 @@ contract Tenet is Ownable {
     }
 
     function withdrawLPToken(uint256 _pid, uint256 _amount) public {
+        require(_amount > 0, "withdrawLPToken: lpamount not good");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         PoolSettingInfo storage poolSetting = poolSettingInfo[_pid];
         require(user.amount >= _amount, "withdrawLPToken: not good");
-        _minePoolToken(pool,poolSetting);
-        (uint256 pendingToken,uint256 pendingTen,uint256 freezeBlocks,uint256 freezeTen) = _withdrawTokenPool(msg.sender,pool,user,poolSetting);
-        _updateTokenPoolUser(pool.accTokenPerShare,pool.accTenPerShare,user,freezeBlocks,freezeTen,_amount,2);
+        if(emergencyWithdraw == 0){
+            _minePoolToken(pool,poolSetting);
+            (uint256 pendingToken,uint256 pendingTen,uint256 freezeBlocks,uint256 freezeTen) = _withdrawTokenPool(msg.sender,pool,user,poolSetting);
+            _updateTokenPoolUser(pool.accTokenPerShare,pool.accTenPerShare,user,freezeBlocks,freezeTen,_amount,2);
+            emit Withdraw(msg.sender, _pid, _amount,pendingToken,pendingTen,freezeTen,freezeBlocks);
+        }else{
+            _updateTokenPoolUser(pool.accTokenPerShare,pool.accTenPerShare,user,user.freezeBlocks,user.freezeTen,_amount,2);
+            emit Withdraw(msg.sender, _pid, _amount,0,0,user.freezeTen,user.freezeBlocks);
+        }
         IERC20(poolSetting.lpToken).safeTransfer(address(msg.sender), _amount);
         pool.lpTokenTotalAmount = pool.lpTokenTotalAmount.sub(_amount);
-        if(user.amount <= MINLPTOKEN_AMOUNT){
+        if(user.amount < MINLPTOKEN_AMOUNT){
             pool.userCount = pool.userCount.sub(1);
-        }        
-        emit Withdraw(msg.sender, _pid, _amount,pendingToken,pendingTen,freezeTen,freezeBlocks);
+        }
     }
 
-    function mineLPToken(uint256 _pid) public {
+    function mineLPToken(uint256 _pid) public onlyNotEmergencyWithdraw {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         PoolSettingInfo storage poolSetting = poolSettingInfo[_pid];
@@ -461,13 +526,14 @@ contract Tenet is Ownable {
         emit MineLPToken(msg.sender, _pid, pendingToken,pendingTen,freezeTen,freezeBlocks);
     }
 
-    function depositLPTokenFrom(address _from,uint256 _pid, uint256 _amount) public {
+    function depositLPTokenFrom(address _from,uint256 _pid, uint256 _amount) public onlyNotEmergencyWithdraw {
+        require(_amount > 0, "depositLPTokenFrom: lpamount not good");
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_from];
         PoolSettingInfo storage poolSetting = poolSettingInfo[_pid];
         _minePoolToken(pool,poolSetting);
         (uint256 pendingToken,uint256 pendingTen,uint256 freezeBlocks,uint256 freezeTen) = _withdrawTokenPool(_from,pool,user,poolSetting);
-        if (user.amount <= MINLPTOKEN_AMOUNT) {
+        if (user.amount < MINLPTOKEN_AMOUNT) {
             pool.userCount = pool.userCount.add(1);
         }
         IERC20(poolSetting.lpToken).safeTransferFrom(msg.sender, address(this), _amount);
@@ -491,12 +557,14 @@ contract Tenet is Ownable {
     }    
 
     function safeTenTransfer(address _to, uint256 _amount) internal {
-        if(_amount > MINLPTOKEN_AMOUNT){
+        if(_amount > 0){
             uint256 bal = ten.balanceOf(address(this));
             if (_amount > bal) {
-                ten.transfer(_to, bal);
+                if(bal > 0){
+                    IERC20(address(ten)).safeTransfer(_to, bal);
+                }
             } else {
-                ten.transfer(_to, _amount);
+                IERC20(address(ten)).safeTransfer(_to, _amount);
             }
         }
     }        

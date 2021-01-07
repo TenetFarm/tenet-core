@@ -16,7 +16,7 @@ import "./Tenet.sol";
 contract TenetProxy is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    uint256 public constant MINLPTOKEN_AMOUNT = 10000000000;
+    uint256 public constant MINLPTOKEN_AMOUNT = 10;
     uint public constant MINIMUM_LIQUIDITY = 10**3;
     uint256 public constant PERSHARERATE = 1000000000000;
 
@@ -47,10 +47,10 @@ contract TenetProxy is Ownable {
     
     function getPendingTenByProject(uint _pid) public view returns (uint256) {
         ( , ,uint256[8] memory retData3) = getPoolAllInfo(_pid);
-        if(retData3[1] <= MINLPTOKEN_AMOUNT){
+        if(retData3[1] < MINLPTOKEN_AMOUNT){
             return 0;
         }
-        if(retData3[5] <= MINLPTOKEN_AMOUNT){
+        if(retData3[5] < MINLPTOKEN_AMOUNT){
             return 0;
         }
         uint256[4] memory tenPoolInfo;
@@ -89,7 +89,7 @@ contract TenetProxy is Ownable {
     function getPendingTenByUser(address _user) public view returns (uint256,uint256,uint256) {
         uint256[6] memory userInfo;
         (userInfo[0],userInfo[1],userInfo[2],userInfo[3],userInfo[4],userInfo[5]) = tenet.userInfoUserPool(_user);
-        if(userInfo[0] <= MINLPTOKEN_AMOUNT){
+        if(userInfo[0] < MINLPTOKEN_AMOUNT){
             if(block.number.sub(userInfo[3])>tenetmine.subBlockNumerPeriod()){
                 return (userInfo[5],0,0);
             }else{
@@ -98,7 +98,7 @@ contract TenetProxy is Ownable {
         }
         uint256[4] memory tenPoolInfo;
         (tenPoolInfo[0],tenPoolInfo[1],tenPoolInfo[2],tenPoolInfo[3]) = tenet.tenUserPool();
-        if(tenPoolInfo[3] <= MINLPTOKEN_AMOUNT){
+        if(tenPoolInfo[3] < MINLPTOKEN_AMOUNT){
             if(block.number.sub(userInfo[3])>tenetmine.subBlockNumerPeriod()){
                 return (userInfo[5],0,0);
             }else{
@@ -118,7 +118,7 @@ contract TenetProxy is Ownable {
     function getPendingTen(uint256 _pid, address _user) public view returns (uint256,uint256,uint256) {
         uint256[6] memory userInfo;
         (userInfo[0], ,userInfo[2],userInfo[3],userInfo[4],userInfo[5]) = tenet.userInfo(_pid,_user);
-        if(userInfo[0] <= MINLPTOKEN_AMOUNT){
+        if(userInfo[0] < MINLPTOKEN_AMOUNT){
             if(block.number.sub(userInfo[3])>tenetmine.subBlockNumerPeriod()){
                 return (userInfo[5],0,0);
             }else{
@@ -126,7 +126,7 @@ contract TenetProxy is Ownable {
             }
         }
         ( , ,uint256[8] memory retData3) = getPoolAllInfo(_pid);
-        if(retData3[1] <= MINLPTOKEN_AMOUNT){
+        if(retData3[1] < MINLPTOKEN_AMOUNT){
             if(block.number.sub(userInfo[3])>tenetmine.subBlockNumerPeriod()){
                 return (userInfo[5],0,0);
             }else{
@@ -142,12 +142,12 @@ contract TenetProxy is Ownable {
     
     function getPendingToken(uint256 _pid, address _user) public view returns (uint256) {
         ( ,uint256[6] memory retData2,uint256[8] memory retData3) = getPoolAllInfo(_pid);
-        if(retData3[1] <= MINLPTOKEN_AMOUNT){
+        if(retData3[1] < MINLPTOKEN_AMOUNT){
             return 0;
         }
         uint256[6] memory userInfo;
         (userInfo[0],userInfo[2], , , , ) = tenet.userInfo(_pid,_user);
-        if(userInfo[0] <= MINLPTOKEN_AMOUNT){
+        if(userInfo[0] < MINLPTOKEN_AMOUNT){
             return 0;
         }        
         if (block.number > retData3[0] && retData3[1] != 0) {

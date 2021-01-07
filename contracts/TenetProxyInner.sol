@@ -17,7 +17,7 @@ contract TenetProxyInner is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 public constant MINLPTOKEN_AMOUNT = 10000000000;
+    uint256 public constant MINLPTOKEN_AMOUNT = 10;
     uint256 public constant MINWEALTH_AMOUNT = 1000000000000000000;
     Tenet public tenet;
     TenetMine public tenetmine;
@@ -188,7 +188,7 @@ contract TenetProxyInner is Ownable {
     function getTenPerBlockByUser() public view returns (uint256 tenReward) {
         uint256[2] memory allTmpData; //allocPoint,lpSupply
         (,,allTmpData[0],allTmpData[1]) = tenet.tenUserPool();
-        if (allTmpData[1] <= MINLPTOKEN_AMOUNT) {
+        if (allTmpData[1] < MINLPTOKEN_AMOUNT) {
             return 0;
         }        
         tenReward = tenetmine.calcMineTenReward(block.number-1, block.number);
@@ -198,7 +198,7 @@ contract TenetProxyInner is Ownable {
     function getTenPerBlockByProject() public view returns (uint256 tenReward) {
         uint256[3] memory allTmpData; //lpTokenAmount,allocPoint,tenLPTokenAmount
         ( , ,allTmpData[0],allTmpData[1]) = tenet.tenProjectPool();
-        if (allTmpData[1] <= MINLPTOKEN_AMOUNT) {
+        if (allTmpData[1] < MINLPTOKEN_AMOUNT) {
             return 0;
         }        
         tenReward = tenetmine.calcMineTenReward(block.number-1, block.number);
@@ -208,10 +208,10 @@ contract TenetProxyInner is Ownable {
     function getTenPerBlockByProjectID(uint _pid) public view returns (uint256 tenReward) {
         uint256[4] memory allTmpData; //lpTokenAmount,allocPoint,tenLPTokenAmount
         ( ,allTmpData[0], , , ,allTmpData[3], , ) = tenet.poolInfo(_pid);
-        if(allTmpData[0] <= MINLPTOKEN_AMOUNT){
+        if(allTmpData[0] < MINLPTOKEN_AMOUNT){
             return 0;
         }
-        if (allTmpData[3] <= MINLPTOKEN_AMOUNT) {
+        if (allTmpData[3] < MINLPTOKEN_AMOUNT) {
             return 0;
         }
         ( , ,allTmpData[1],allTmpData[2]) = tenet.tenProjectPool();
