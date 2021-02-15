@@ -55,7 +55,7 @@ contract Bridge is Ownable{
         require(verifier[msg.sender] == true, "withdraw: permission denied");
         require(depositTxHash[_txHash] == false, "withdraw: duplicated hash");
         address homeTokenAddr = tokenPair[_foreignToken];
-        require(getBalance(homeTokenAddr) >= _amount, "withdraw: balance not enough");
+        require(getBalance(_foreignToken) >= _amount, "withdraw: balance not enough");
         safeTenTransfer(homeTokenAddr, _to, _amount);
         depositTxHash[_txHash] = true;
         TxInfo storage info = txInfo[_txHash];
