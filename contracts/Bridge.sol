@@ -17,6 +17,7 @@ contract Bridge is Ownable{
         uint256 amount;
     }
 
+    address payable public feeReceiver;
     mapping(bytes32 => bool) depositTxHash;
     mapping(address => bool) verifier;
     mapping(bytes32 => TxInfo) txInfo;
@@ -32,19 +33,21 @@ contract Bridge is Ownable{
     constructor (
        address _homeToken,
        address _foreignToken,
-       address _verifier,
+       address payable _verifier,
        uint256 _feeAmount
     ) public {
         tokenPair[_foreignToken] = _homeToken;
         reTokenPair[_homeToken] = _foreignToken;
         verifier[_verifier] = true;
         feeAmount = _feeAmount;
+        feeReceiver = _verifier;
     }
 
     function deposit(address _homeToken, address _to, uint256 _amount) public payable {
         require(reTokenPair[_homeToken] != address(0), "deposit: pair not exist");
         IERC20 token = IERC20(_homeToken);
         require(msg.value >= feeAmount, "deposit: insufficient for fee");
+        feeReceiver.transfer(msg.value);
         require(token.balanceOf(msg.sender) >= _amount, "deposit: insufficient token balance");
         token.transferFrom(msg.sender, address(this), _amount);
         emit Deposit(_homeToken, msg.sender, _to, _amount);
@@ -99,8 +102,16 @@ contract Bridge is Ownable{
         reTokenPair[_homeAddr] = _foreignAddr;
     }
 
+    function setFeeReceiver(address payable _receiver) public onlyOwner {
+        feeReceiver = _receiver;
+    }
+
     function getBalance(address _tokenAddr) public view returns (uint256) {
         return IERC20(tokenPair[_tokenAddr]).balanceOf(address(this));
+    }
+
+    function getHomeBalance(address _tokenAddr) public view returns(uint256) {
+        return IERC20(_tokenAddr).balanceOf(address(this));
     }
 
     function safeTenTransfer(address _tokenAddr, address _to, uint256 _amount) internal {
